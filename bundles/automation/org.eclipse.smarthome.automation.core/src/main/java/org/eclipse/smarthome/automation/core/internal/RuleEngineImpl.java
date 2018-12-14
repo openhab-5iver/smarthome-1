@@ -981,6 +981,7 @@ public class RuleEngineImpl implements RuleManager, RegistryChangeListener<Modul
      * @param td {@link TriggerData} object containing new values for {@link Trigger}'s {@link Output}s
      */
     protected void runRule(String ruleUID, TriggerHandlerCallbackImpl.TriggerData td) {
+        final WrappedRule rule = managedRules.get(ruleUID);
         if (thCallbacks.get(ruleUID) == null) {
             // the rule was unregistered
             return;
@@ -988,7 +989,7 @@ public class RuleEngineImpl implements RuleManager, RegistryChangeListener<Modul
         synchronized (this) {
             final RuleStatus ruleStatus = getRuleStatus(ruleUID);
             if (ruleStatus != RuleStatus.IDLE) {
-                logger.error("Failed to execute rule ‘{}' with status '{}'", ruleUID, ruleStatus.name());
+                logger.error("Failed to execute rule ‘{}' ({}) with status '{}'", rule.getName(), ruleUID, ruleStatus.name());
                 return;
             }
             // change state to RUNNING
@@ -996,19 +997,17 @@ public class RuleEngineImpl implements RuleManager, RegistryChangeListener<Modul
         }
         try {
             clearContext(ruleUID);
-
             setTriggerOutputs(ruleUID, td);
-            final WrappedRule rule = managedRules.get(ruleUID);
             boolean isSatisfied = calculateConditions(rule);
             if (isSatisfied) {
                 executeActions(rule, true);
-                logger.debug("The rule '{}' is executed.", ruleUID);
+                logger.debug("The rule '{}' ({}) is executed.", rule.getName(), ruleUID);
             } else {
-                logger.debug("The rule '{}' is NOT executed, since it has unsatisfied conditions.", ruleUID);
+                logger.debug("The rule '{}' ({}) is NOT executed, since it has unsatisfied conditions.", rule.getName(), ruleUID);
             }
         } catch (Throwable t) {
-            logger.error("Failed to execute rule '{}': {}", ruleUID, t.getMessage());
-            logger.debug("", t);
+            logger.error("Failed to execute rule '{}' ({}): {}", rule.getName(), ruleUID, t.getMessage());
+            logger.debug("{}", t);
         }
         // change state to IDLE only if the rule has not been DISABLED.
         synchronized (this) {
@@ -1022,13 +1021,13 @@ public class RuleEngineImpl implements RuleManager, RegistryChangeListener<Modul
     public void runNow(String ruleUID, boolean considerConditions, @Nullable Map<String, Object> context) {
         final WrappedRule rule = getManagedRule(ruleUID);
         if (rule == null) {
-            logger.warn("Failed to execute rule '{}': Invalid Rule UID", ruleUID);
+            logger.warn("Failed to execute rule ({}): Invalid Rule UID", ruleUID);
             return;
         }
         synchronized (this) {
             final RuleStatus ruleStatus = getRuleStatus(ruleUID);
             if (ruleStatus != RuleStatus.IDLE) {
-                logger.error("Failed to execute rule ‘{}' with status '{}'", ruleUID, ruleStatus.name());
+                logger.error("Failed to execute rule ‘{}' ({}) with status '{}'", rule.getName(), ruleUID, ruleStatus.name());
                 return;
             }
             // change state to RUNNING
@@ -1046,9 +1045,10 @@ public class RuleEngineImpl implements RuleManager, RegistryChangeListener<Modul
             } else {
                 executeActions(rule, false);
             }
-            logger.debug("The rule '{}' is executed.", ruleUID);
+            logger.debug("The rule '{}' ({}) is executed.", rule.getName(), ruleUID);
         } catch (Throwable t) {
-            logger.error("Failed to execute rule '{}': ", ruleUID, t);
+            logger.error("Failed to execute rule '{}' ({}): {}", rule.getName(), ruleUID, t.getMessage());
+            logger.debug("{}", t);
         }
         // change state to IDLE only if the rule has not been DISABLED.
         synchronized (this) {
@@ -1165,8 +1165,8 @@ public class RuleEngineImpl implements RuleManager, RegistryChangeListener<Modul
             ConditionHandler tHandler = managedCondition.getModuleHandler();
             Map<String, Object> context = getContext(ruleUID, managedCondition.getConnections());
             if (tHandler != null && !tHandler.isSatisfied(Collections.unmodifiableMap(context))) {
-                logger.debug("The condition '{}' of rule '{}' is unsatisfied.",
-                        new Object[] { condition.getId(), ruleUID });
+                logger.debug("The condition '{}' of rule '{}' ({}) is unsatisfied.",
+                        new Object[] { condition.getId(), rule.getName(), ruleUID });
                 return false;
             }
         }
