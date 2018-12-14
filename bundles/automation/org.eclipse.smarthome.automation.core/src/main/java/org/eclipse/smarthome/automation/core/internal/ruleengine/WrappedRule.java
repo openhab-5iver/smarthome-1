@@ -54,6 +54,7 @@ public class WrappedRule {
     private final List<WrappedAction> actions;
     private final List<WrappedCondition> conditions;
     private final List<WrappedTrigger> triggers;
+    private final @Nullable String name;
 
     public WrappedRule(final Rule rule) {
         this.rule = rule;
@@ -62,6 +63,7 @@ public class WrappedRule {
         this.conditions = map(rule.getConditions(), WrappedCondition::new, modules);
         this.triggers = map(rule.getTriggers(), WrappedTrigger::new, modules);
         this.modules = Collections.unmodifiableList(modules);
+        this.name = rule.getName();
     }
 
     public final String getUID() {
@@ -94,6 +96,10 @@ public class WrappedRule {
 
     public List<WrappedModule<Module, ModuleHandler>> getModules() {
         return modules;
+    }
+    
+    public final @Nullable String getName() {
+        return name;
     }
 
 }
